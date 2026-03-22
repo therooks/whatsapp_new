@@ -66,20 +66,34 @@ const PUBLIC_PATHS = [
 ];
 
 function isAuthenticated(req, res, next) {
-  // Always allow public paths and root (login)
+  // ── 1. Always allow public paths and root (login page)
   if (PUBLIC_PATHS.includes(req.path)) return next();
-  // Allow static assets (css, js, fonts)
+
+  // ── 2. Always allow static assets (css, js, fonts, images)
   if (req.path.match(/\.(css|js|woff2?|ttf|png|jpg|ico|svg|webp)$/)) return next();
 
-  if (req.session && req.session.userId) {
-    return next(); // logged in
+  // ── 3. API Key bypass — for server-to-server calls (CI3, cron jobs, etc.)
+  //       Send header:  x-api-key: <WA_API_KEY from .env>
+  const API_KEY = process.env.WA_API_KEY || '';
+  const reqKey  = req.headers['x-api-key'] || '';
+  if (API_KEY && reqKey === API_KEY) {
+    return next(); // ✅ Valid API key — skip session check
   }
 
-  // API call → return 401
-  if (req.headers.accept?.includes('application/json') || req.path.startsWith('/auth') || req.path.startsWith('/qr') || req.path.startsWith('/send') || req.path.startsWith('/logs') || req.path.startsWith('/stats') || req.path.startsWith('/contacts') || req.path.startsWith('/health') || req.path.startsWith('/reconnect') || req.path.startsWith('/disconnect')) {
-    return res.status(401).json({ success: false, message: 'Unauthorized. Please login.' });
+  // ── 4. Browser session check
+  if (req.session && req.session.userId) {
+    return next(); // ✅ Logged-in browser user
   }
-  // Browser → redirect to login root
+
+  // ── 5. No valid auth — return 401 for API paths, redirect for pages
+  const isApiPath = ['/qr','/send','/logs','/stats','/contacts','/health','/reconnect','/disconnect','/diag']
+    .some(p => req.path.startsWith(p));
+
+  if (isApiPath || req.headers.accept?.includes('application/json')) {
+    return res.status(401).json({ success: false, message: 'Unauthorized. Provide x-api-key header or login first.' });
+  }
+
+  // Browser page request → redirect to login
   return res.redirect('/');
 }
 
