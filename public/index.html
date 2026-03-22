@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dashboard | WA Engine X</title>
+  <link rel="stylesheet" href="/output.css" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
+  <style>
+    * { box-sizing: border-box; }
+    body { background: #030712; color: #f8fafc; font-family: "Outfit", sans-serif; margin: 0; min-height: 100vh; }
+    #bgCanvas { position: fixed; inset: 0; z-index: 0; pointer-events: none; }
+    .glass { background: rgba(17,24,39,0.7); backdrop-filter: blur(18px); border: 1px solid rgba(255,255,255,0.07); border-radius: 1rem; }
+    .glass-nav { background: rgba(8,12,22,0.92); backdrop-filter: blur(24px); border-bottom: 1px solid rgba(255,255,255,0.06); }
+    .card-hover { transition: transform .25s, box-shadow .25s; }
+    .card-hover:hover { transform: translateY(-3px); box-shadow: 0 12px 30px -8px rgba(16,185,129,0.2); }
+    .nav-a { color: #94a3b8; font-weight: 600; font-size: .875rem; padding: .4rem .85rem; border-radius: .5rem; text-decoration: none; white-space: nowrap; transition: background .2s, color .2s; }
+    .nav-a:hover { background: rgba(255,255,255,.06); color: #fff; }
+    .nav-a.on { background: rgba(52,211,153,.12); color: #34d399; }
+    .btn { cursor: pointer; border: none; font-family: inherit; font-weight: 700; border-radius: .75rem; transition: opacity .2s, transform .15s; }
+    .btn:hover { opacity: .85; transform: translateY(-1px); }
+    ::-webkit-scrollbar { width: 4px; } ::-webkit-scrollbar-thumb { background: rgba(255,255,255,.12); border-radius: 4px; }
+  </style>
+</head>
+<body>
+<canvas id="bgCanvas"></canvas>
+
+<!-- TOP NAV -->
+<nav class="glass-nav sticky top-0 z-50 w-full px-5 py-3 flex flex-row items-center justify-between gap-4">
+  <div class="flex items-center gap-2" style="flex-shrink:0">
+    <div class="p-1.5 rounded-lg bg-gradient-to-br from-emerald-400 to-cyan-500" style="flex-shrink:0">
+      <svg class="ic" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="width:1rem;height:1rem"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>
+    </div>
+    <span class="font-bold text-white text-sm tracking-wide" style="flex-shrink:0">WA Engine X</span>
+  </div>
+  <div class="flex items-center gap-1 overflow-x-auto" style="scrollbar-width:none">
+    <a href="/d/aW5kZXg" class="nav-a on">Dashboard</a>
+    <a href="/d/Y29udGFjdHM" class="nav-a">Contacts</a>
+    <a href="/d/bG9ncw" class="nav-a">Logs</a>
+    <a href="/d/aGlzdG9yeQ" class="nav-a">History</a>
+  </div>
+  <div style="display:flex;align-items:center;gap:.75rem;flex-shrink:0">
+    <span id="navUser" style="font-size:.75rem;color:#6b7280;font-weight:600"></span>
+    <a href="/auth/logout" style="font-size:.75rem;padding:.35rem .85rem;border-radius:.5rem;background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.2);color:#f87171;text-decoration:none;font-weight:600;white-space:nowrap;transition:background .2s" onmouseover="this.style.background='rgba(239,68,68,.2)'" onmouseout="this.style.background='rgba(239,68,68,.1)'">Sign Out</a>
+  </div>
+</nav>
+
+<!-- MAIN CONTENT -->
+<div class="relative z-10 w-full max-w-screen-xl mx-auto px-4 md:px-6 py-6">
+  <div class="grid grid-cols-1 xl:grid-cols-3 gap-5">
+
+    <!-- LEFT: Stats + Chart (spans 2 cols) -->
+    <div class="xl:col-span-2 flex flex-col gap-5">
+
+      <!-- Stat Cards -->
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div class="glass p-4 card-hover flex flex-col gap-2">
+          <span class="text-xs text-gray-400 font-semibold uppercase tracking-wider">Sent</span>
+          <span id="statSent" class="text-2xl font-bold text-emerald-400">0</span>
+          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" style="width:1.25rem;height:1.25rem;color:rgba(52,211,153,0.5);align-self:flex-end"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 12L3.269 3.125A59.769 59.769 0 0121.485 12 59.768 59.768 0 013.27 20.875L5.999 12zm0 0h7.5"/></svg>
+        </div>
+        <div class="glass p-4 card-hover flex flex-col gap-2">
+          <span class="text-xs text-gray-400 font-semibold uppercase tracking-wider">Failed</span>
+          <span id="statFailed" class="text-2xl font-bold text-red-400">0</span>
+          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" style="width:1.25rem;height:1.25rem;color:rgba(248,113,113,0.5);align-self:flex-end"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+        </div>
+        <div class="glass p-4 card-hover flex flex-col gap-2">
+          <span class="text-xs text-gray-400 font-semibold uppercase tracking-wider">Contacts</span>
+          <span id="statContacts" class="text-2xl font-bold text-blue-400">0</span>
+          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" style="width:1.25rem;height:1.25rem;color:rgba(96,165,250,0.5);align-self:flex-end"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+        </div>
+        <div class="glass p-4 card-hover flex flex-col gap-2">
+          <span class="text-xs text-gray-400 font-semibold uppercase tracking-wider">CPU Load</span>
+          <span id="statCpu" class="text-2xl font-bold text-white">0%</span>
+          <span id="statMem" class="text-xs text-gray-500">0 MB RAM</span>
+        </div>
+      </div>
+
+      <!-- Traffic Chart -->
+      <div class="glass p-5 card-hover">
+        <h3 class="text-sm font-bold text-gray-400 uppercase tracking-wider mb-4">Realtime Traffic</h3>
+        <div style="height:180px"><canvas id="trafficChart"></canvas></div>
+      </div>
+
+      <!-- Recent Logs Table -->
+      <div class="glass p-5">
+        <div class="flex items-center justify-between mb-4">
+          <h3 class="text-sm font-bold text-gray-400 uppercase tracking-wider">Recent Pipeline</h3>
+          <span class="flex items-center gap-1.5 text-xs text-emerald-400 font-semibold">
+            <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse inline-block"></span>LIVE
+          </span>
+        </div>
+        <div class="overflow-x-auto rounded-lg border border-white/5">
+          <table class="w-full text-xs text-left">
+            <thead class="bg-white/5 text-gray-500 uppercase tracking-wider border-b border-white/5">
+              <tr>
+                <th class="px-4 py-2.5">Recipient</th>
+                <th class="px-4 py-2.5">Type</th>
+                <th class="px-4 py-2.5 w-2/5">Message</th>
+                <th class="px-4 py-2.5">Status</th>
+                <th class="px-4 py-2.5">Time</th>
+              </tr>
+            </thead>
+            <tbody id="recentList" class="divide-y divide-white/5 font-mono text-gray-300">
+              <tr><td colspan="5" class="px-4 py-5 text-center text-gray-600">Loading...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT: Device Controller -->
+    <div class="xl:col-span-1">
+      <div class="glass p-5 card-hover flex flex-col gap-4" style="min-height:480px">
+        <div class="text-center">
+          <h2 class="font-bold text-white text-base">Device Controller</h2>
+          <p id="connStatusText" class="text-xs text-gray-500 uppercase tracking-widest mt-1">Initializing...</p>
+        </div>
+
+        <!-- CONNECTED STATE -->
+        <div id="stateConnected" class="hidden flex-col items-center justify-center flex-1 gap-3 py-6">
+        <div class="relative" style="flex-shrink:0">
+            <div class="w-20 h-20 rounded-full border-2 border-emerald-500/60 bg-emerald-500/10 flex items-center justify-center shadow-[0_0_20px_rgba(16,185,129,0.15)]" style="width:5rem;height:5rem">
+              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" style="width:2.25rem;height:2.25rem;color:#34d399"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M10.5 1.5H8.25A2.25 2.25 0 006 3.75v16.5a2.25 2.25 0 002.25 2.25h7.5A2.25 2.25 0 0018 20.25V3.75a2.25 2.25 0 00-2.25-2.25H13.5m-3 0V3h3V1.5m-3 0h3m-3 18.75h3"/></svg>
+            </div>
+            <span class="absolute bottom-0 right-0 rounded-full border-2 border-slate-900 bg-emerald-500" style="width:1rem;height:1rem;bottom:0;right:0"></span>
+          </div>
+          <p id="displayNum" class="text-xl font-bold text-white tracking-wide">+--</p>
+          <span class="text-xs text-emerald-400 bg-emerald-400/10 border border-emerald-400/20 px-3 py-1 rounded-full uppercase tracking-widest">Active Session</span>
+        </div>
+
+        <!-- WAITING STATE -->
+        <div id="stateWaiting" class="hidden flex-col items-center justify-center flex-1 gap-4 py-4">
+          <button id="btnShowQR" onclick="userWantsQR=true;updateDashboard()" class="flex flex-col items-center gap-2 px-6 py-5 rounded-xl border border-emerald-500/30 bg-emerald-500/5 hover:bg-emerald-500/10 transition w-full max-w-xs text-emerald-400 font-semibold text-sm" style="cursor:pointer">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" style="width:1.75rem;height:1.75rem;color:#34d399"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3.75 4.875c0-.621.504-1.125 1.125-1.125h4.5c.621 0 1.125.504 1.125 1.125v4.5c0 .621-.504 1.125-1.125 1.125h-4.5A1.125 1.125 0 013.75 9.375v-4.5zM3.75 14.625c0-.621.504-1.125 1.125-1.125h4.5c.621 0 1.125.504 1.125 1.125v4.5c0 .621-.504 1.125-1.125 1.125h-4.5a1.125 1.125 0 01-1.125-1.125v-4.5zM13.5 4.875c0-.621.504-1.125 1.125-1.125h4.5c.621 0 1.125.504 1.125 1.125v4.5c0 .621-.504 1.125-1.125 1.125h-4.5A1.125 1.125 0 0113.5 9.375v-4.5z"/></svg>
+            Tap to Show QR Code
+          </button>
+          <div id="qrArea" class="hidden flex-col items-center gap-3">
+            <div class="p-2 bg-white rounded-xl shadow-[0_0_20px_rgba(16,185,129,0.25)] border-2 border-emerald-400/30">
+              <img id="qrImage" src="" alt="QR" class="w-44 h-44 block" />
+            </div>
+            <p class="text-xs text-emerald-400/70 uppercase tracking-widest">Scan via WhatsApp</p>
+          </div>
+        </div>
+
+        <!-- OFFLINE STATE -->
+        <div id="stateOffline" class="hidden flex-col items-center justify-center flex-1 gap-3 py-6">
+          <div class="rounded-full bg-red-500/10 flex items-center justify-center" style="width:4rem;height:4rem">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" style="width:2rem;height:2rem;color:#f87171"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 5.636a9 9 0 010 12.728m-12.728 0a9 9 0 010-12.728M15.536 8.464a5 5 0 010 7.072M8.464 8.464a5 5 0 000 7.072M12 12v.01"/></svg>
+          </div>
+          <p class="text-sm font-bold text-red-400 uppercase tracking-widest">Offline</p>
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="flex flex-col gap-2 mt-auto pt-4 border-t border-white/5">
+          <button onclick="doAction('/health')" class="btn w-full py-2.5 text-sm bg-white/5 border border-white/10 text-gray-200 flex items-center justify-center gap-2" style="background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1)">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" style="width:1rem;height:1rem;color:#34d399;flex-shrink:0"><path stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+            Connect / Refresh
+          </button>
+          <div class="grid grid-cols-2 gap-2">
+            <button onclick="doAction('/reconnect')" class="btn py-2 text-xs text-yellow-400 bg-yellow-400/5 hover:bg-yellow-400/10 border border-yellow-400/20">Force Reboot</button>
+            <button onclick="doAction('/disconnect')" class="btn py-2 text-xs text-red-400 bg-red-400/5 hover:bg-red-400/10 border border-red-400/20">Disconnect</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- THREE.JS BG -->
+<script>
+  const scene=new THREE.Scene(),cam=new THREE.PerspectiveCamera(65,innerWidth/innerHeight,.1,1000),ren=new THREE.WebGLRenderer({canvas:document.getElementById('bgCanvas'),alpha:true,antialias:true});
+  ren.setSize(innerWidth,innerHeight);ren.setPixelRatio(Math.min(devicePixelRatio,2));
+  const geo=new THREE.BufferGeometry(),N=600,pos=new Float32Array(N*3),col=new Float32Array(N*3),tc=[new THREE.Color('#10B981'),new THREE.Color('#0ea5e9')];
+  for(let i=0;i<N*3;i+=3){pos[i]=(Math.random()-.5)*40;pos[i+1]=(Math.random()-.5)*40;pos[i+2]=(Math.random()-.5)*20-5;const c=tc[~~(Math.random()*2)];col[i]=c.r;col[i+1]=c.g;col[i+2]=c.b;}
+  geo.setAttribute('position',new THREE.BufferAttribute(pos,3));geo.setAttribute('color',new THREE.BufferAttribute(col,3));
+  const pts=new THREE.Points(geo,new THREE.PointsMaterial({size:.08,vertexColors:true,transparent:true,opacity:.7,blending:THREE.AdditiveBlending}));
+  scene.add(pts);cam.position.z=8;
+  let mx=0,my=0;document.addEventListener('mousemove',e=>{mx=(e.clientX-innerWidth/2)*.0008;my=(e.clientY-innerHeight/2)*.0008;});
+  (function anim(){requestAnimationFrame(anim);pts.rotation.y+=.0003;cam.position.x+=(mx*.4-cam.position.x)*.05;cam.position.y+=(-my*.4-cam.position.y)*.05;cam.lookAt(scene.position);ren.render(scene,cam);})();
+  window.addEventListener('resize',()=>{cam.aspect=innerWidth/innerHeight;cam.updateProjectionMatrix();ren.setSize(innerWidth,innerHeight);});
+</script>
+
+<!-- CHART -->
+<script>
+  Chart.defaults.color='#64748b';Chart.defaults.font.family='Outfit';
+  const tc2=document.getElementById('trafficChart').getContext('2d');
+  const trafficChart=new Chart(tc2,{type:'line',data:{labels:['10m','8m','6m','4m','2m','Now'],datasets:[
+    {label:'Sent',data:[0,0,0,0,0,0],borderColor:'#10B981',backgroundColor:'rgba(16,185,129,.08)',borderWidth:2,tension:.4,fill:true,pointRadius:0},
+    {label:'Failed',data:[0,0,0,0,0,0],borderColor:'#ef4444',backgroundColor:'rgba(239,68,68,.08)',borderWidth:2,tension:.4,fill:true,pointRadius:0}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{grid:{display:false}},y:{beginAtZero:true,grid:{color:'rgba(255,255,255,.04)'}}}}});
+</script>
+
+<!-- CORE LOGIC -->
+<script>
+  let userWantsQR=false;
+  const ST={sent:'<span class="text-emerald-400 font-bold">OK</span>',failed:'<span class="text-red-400 font-bold">FAIL</span>',pending:'<span class="text-yellow-400 font-bold">WAIT</span>'};
+  function badge(t){return `<span class="px-1.5 py-0.5 rounded bg-white/5 border border-white/10 text-cyan-300 text-[10px] uppercase tracking-wide">${t||'user'}</span>`;}
+  function showState(s){['Connected','Waiting','Offline'].forEach(n=>{const el=document.getElementById('state'+n);el.classList.add('hidden');el.classList.remove('flex');});const t=document.getElementById('state'+s);t.classList.remove('hidden');t.classList.add('flex');}
+
+  async function updateDashboard(){
+    try{
+      const res=await(await fetch('/qr')).json();
+      const txt=document.getElementById('connStatusText');
+      if(res.status==='connected'){
+        txt.textContent='Link Secured';txt.className='text-xs text-emerald-400 uppercase tracking-widest mt-1';
+        showState('Connected');document.getElementById('displayNum').textContent='+'+(res.number||'active');userWantsQR=false;
+      }else if(res.status==='waiting'){
+        txt.textContent='Pairing Mode';txt.className='text-xs text-yellow-400 uppercase tracking-widest mt-1';
+        showState('Waiting');
+        if(userWantsQR&&res.qr){
+          document.getElementById('btnShowQR').classList.add('hidden');
+          const qa=document.getElementById('qrArea');qa.classList.remove('hidden');qa.classList.add('flex');
+          document.getElementById('qrImage').src=res.qr;
+        }else{
+          document.getElementById('btnShowQR').classList.remove('hidden');
+          const qa=document.getElementById('qrArea');qa.classList.add('hidden');qa.classList.remove('flex');
+        }
+      }else{
+        txt.textContent='Offline';txt.className='text-xs text-red-400 uppercase tracking-widest mt-1';
+        showState('Offline');userWantsQR=false;
+      }
+    }catch(e){}
+    try{const s=await(await fetch('/stats/server')).json();document.getElementById('statCpu').textContent=s.cpu_usage+'%';document.getElementById('statMem').textContent=s.memory_usage_mb+' MB RAM';}catch(e){}
+    try{const s=await(await fetch('/stats/summary')).json();if(s.data){document.getElementById('statSent').textContent=(s.data.total_sent||0).toLocaleString();document.getElementById('statFailed').textContent=(s.data.total_failed||0).toLocaleString();document.getElementById('statContacts').textContent=(s.data.total_contacts||0).toLocaleString();const d0=trafficChart.data.datasets[0].data;d0.shift();d0.push(s.data.today_sent||0);const d1=trafficChart.data.datasets[1].data;d1.shift();d1.push(s.data.today_failed||0);trafficChart.update();}}catch(e){}
+    try{const r=await(await fetch('/logs/recent')).json();if(r.data?.length){document.getElementById('recentList').innerHTML=r.data.slice(0,8).map(l=>`<tr class="hover:bg-white/[.03]"><td class="px-4 py-2.5">${l.phone}</td><td class="px-4 py-2.5">${badge(l.category)}</td><td class="px-4 py-2.5 text-emerald-200 font-sans max-w-[180px] truncate">${(l.message_text||'').substring(0,60).replace(/</g,'&lt;')}</td><td class="px-4 py-2.5">${ST[l.status]||ST.pending}</td><td class="px-4 py-2.5 text-gray-500 font-sans">${new Date(l.sent_at).toLocaleTimeString()}</td></tr>`).join('');}}catch(e){}
+  }
+
+  async function doAction(path){
+    try{const btn=event.currentTarget;const old=btn.innerHTML;btn.innerHTML='Processing...';btn.disabled=true;await fetch(path);userWantsQR=false;await updateDashboard();btn.innerHTML=old;btn.disabled=false;}catch(e){}
+  }
+  updateDashboard();setInterval(updateDashboard,4000);
+</script>
+</body>
+</html>

@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Contacts | WA Engine X</title>
+  <link rel="stylesheet" href="/output.css" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
+  <style>
+    *{box-sizing:border-box;}
+    body{background:#030712;color:#f8fafc;font-family:"Outfit",sans-serif;margin:0;min-height:100vh;}
+    #bgCanvas{position:fixed;inset:0;z-index:0;pointer-events:none;}
+    .glass{background:rgba(17,24,39,.7);backdrop-filter:blur(18px);border:1px solid rgba(255,255,255,.07);border-radius:1rem;}
+    .glass-nav{background:rgba(8,12,22,.92);backdrop-filter:blur(24px);border-bottom:1px solid rgba(255,255,255,.06);}
+    .nav-a{color:#94a3b8;font-weight:600;font-size:.875rem;padding:.4rem .85rem;border-radius:.5rem;text-decoration:none;white-space:nowrap;transition:background .2s,color .2s;}
+    .nav-a:hover{background:rgba(255,255,255,.06);color:#fff;}
+    .nav-a.on{background:rgba(52,211,153,.12);color:#34d399;}
+    .btn{cursor:pointer;border:none;font-family:inherit;font-weight:700;border-radius:.75rem;transition:opacity .2s,transform .15s;}
+    .btn:hover{opacity:.85;transform:translateY(-1px);}
+    ::-webkit-scrollbar{width:4px;}::-webkit-scrollbar-thumb{background:rgba(255,255,255,.12);border-radius:4px;}
+  </style>
+</head>
+<body>
+<canvas id="bgCanvas"></canvas>
+
+<!-- TOP NAV -->
+<nav class="glass-nav sticky top-0 z-50 w-full px-5 py-3 flex flex-row items-center justify-between gap-4">
+  <div class="flex items-center gap-2 shrink-0">
+    <div class="p-1.5 rounded-lg bg-gradient-to-br from-emerald-400 to-cyan-500">
+      <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>
+    </div>
+    <span class="font-bold text-white text-sm tracking-wide">WA Engine X</span>
+  </div>
+  <div class="flex items-center gap-1 overflow-x-auto" style="scrollbar-width:none">
+    <a href="/d/aW5kZXg" class="nav-a">Dashboard</a>
+    <a href="/d/Y29udGFjdHM" class="nav-a on">Contacts</a>
+    <a href="/d/bG9ncw" class="nav-a">Logs</a>
+    <a href="/d/aGlzdG9yeQ" class="nav-a">History</a>
+  </div>
+  <div style="display:flex;align-items:center;gap:.75rem;flex-shrink:0">
+    <a href="/auth/logout" style="font-size:.75rem;padding:.35rem .85rem;border-radius:.5rem;background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.2);color:#f87171;text-decoration:none;font-weight:600;white-space:nowrap">Sign Out</a>
+  </div>
+</nav>
+
+<!-- MAIN -->
+<div class="relative z-10 w-full max-w-screen-xl mx-auto px-4 md:px-6 py-6">
+  <div class="glass p-5">
+    <!-- Header -->
+    <div class="flex flex-wrap items-center justify-between gap-3 mb-5">
+      <h2 class="text-lg font-bold text-white">Contact Manager</h2>
+      <div class="flex flex-wrap gap-2 items-center">
+        <input id="searchContact" type="text" placeholder="Search name or phone..." class="px-3 py-2 text-sm bg-black/40 text-gray-200 rounded-xl border border-white/10 focus:outline-none focus:border-emerald-500 transition w-52" />
+        <button id="btnAddContact" class="btn px-4 py-2 text-sm bg-gradient-to-r from-emerald-500 to-emerald-400 text-black shadow-[0_0_12px_rgba(16,185,129,.35)]">+ Add Contact</button>
+      </div>
+    </div>
+
+    <!-- Table -->
+    <div class="overflow-x-auto rounded-xl border border-white/5">
+      <table class="w-full text-left text-sm">
+        <thead class="bg-white/5 text-gray-500 uppercase text-xs tracking-wider border-b border-white/5">
+          <tr>
+            <th class="px-4 py-3">Phone</th>
+            <th class="px-4 py-3">Name</th>
+            <th class="px-4 py-3">Type</th>
+            <th class="px-4 py-3">Last Message</th>
+            <th class="px-4 py-3 text-right">Actions</th>
+          </tr>
+        </thead>
+        <tbody id="contactList" class="divide-y divide-white/5 font-mono text-[13px] text-gray-300">
+          <tr><td colspan="5" class="px-4 py-6 text-center text-gray-600">Loading contacts...</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL -->
+<div id="contactModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm hidden items-center justify-center z-[100]">
+  <div class="glass border border-emerald-500/20 rounded-2xl p-6 w-full max-w-md shadow-[0_0_40px_rgba(16,185,129,.12)] relative mx-4">
+    <button id="btnCancelModal" class="absolute top-4 right-4 text-gray-400 hover:text-white text-lg leading-none">✕</button>
+    <h3 id="modalTitle" class="text-lg font-bold mb-5 text-emerald-300">Add Contact</h3>
+    <form id="contactForm" class="space-y-4">
+      <input type="hidden" id="contactId" />
+      <div>
+        <label class="text-xs text-gray-400 uppercase tracking-wide block mb-1">Phone (with country code)</label>
+        <input id="contactPhone" type="text" required class="w-full px-4 py-2.5 bg-black/40 text-gray-200 rounded-xl border border-white/10 focus:border-emerald-500 outline-none text-sm" placeholder="+1234567890" />
+      </div>
+      <div>
+        <label class="text-xs text-gray-400 uppercase tracking-wide block mb-1">Full Name</label>
+        <input id="contactName" type="text" class="w-full px-4 py-2.5 bg-black/40 text-gray-200 rounded-xl border border-white/10 focus:border-emerald-500 outline-none text-sm" placeholder="John Doe" />
+      </div>
+      <div>
+        <label class="text-xs text-gray-400 uppercase tracking-wide block mb-1">Type / Role</label>
+        <select id="contactType" class="w-full px-4 py-2.5 bg-black/40 text-gray-200 rounded-xl border border-white/10 focus:border-emerald-500 outline-none text-sm">
+          <option value="student">Student</option>
+          <option value="parent">Parent</option>
+          <option value="teacher">Teacher</option>
+          <option value="other">Other</option>
+        </select>
+      </div>
+      <div class="flex gap-3 pt-2">
+        <button type="submit" class="btn flex-1 py-2.5 text-sm bg-gradient-to-r from-emerald-500 to-emerald-400 text-black">Save Contact</button>
+        <button type="button" id="btnCancelModal2" class="btn flex-1 py-2.5 text-sm bg-white/5 border border-white/10 text-gray-300">Cancel</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- THREE.JS BG -->
+<script>
+  const scene=new THREE.Scene(),cam=new THREE.PerspectiveCamera(65,innerWidth/innerHeight,.1,1000),ren=new THREE.WebGLRenderer({canvas:document.getElementById('bgCanvas'),alpha:true,antialias:true});
+  ren.setSize(innerWidth,innerHeight);ren.setPixelRatio(Math.min(devicePixelRatio,2));
+  const geo=new THREE.BufferGeometry(),N=500,pos=new Float32Array(N*3),col=new Float32Array(N*3),tc=[new THREE.Color('#10B981'),new THREE.Color('#0ea5e9')];
+  for(let i=0;i<N*3;i+=3){pos[i]=(Math.random()-.5)*40;pos[i+1]=(Math.random()-.5)*40;pos[i+2]=(Math.random()-.5)*20-5;const c=tc[~~(Math.random()*2)];col[i]=c.r;col[i+1]=c.g;col[i+2]=c.b;}
+  geo.setAttribute('position',new THREE.BufferAttribute(pos,3));geo.setAttribute('color',new THREE.BufferAttribute(col,3));
+  const pts=new THREE.Points(geo,new THREE.PointsMaterial({size:.08,vertexColors:true,transparent:true,opacity:.6,blending:THREE.AdditiveBlending}));
+  scene.add(pts);cam.position.z=8;
+  (function anim(){requestAnimationFrame(anim);pts.rotation.y+=.0003;ren.render(scene,cam);})();
+  window.addEventListener('resize',()=>{cam.aspect=innerWidth/innerHeight;cam.updateProjectionMatrix();ren.setSize(innerWidth,innerHeight);});
+</script>
+
+<!-- CONTACTS LOGIC -->
+<script>
+  let contacts=[];
+  const T={student:'<span class="px-1.5 py-0.5 text-[10px] rounded bg-blue-500/10 border border-blue-500/20 text-blue-300 uppercase tracking-wide">Student</span>',parent:'<span class="px-1.5 py-0.5 text-[10px] rounded bg-purple-500/10 border border-purple-500/20 text-purple-300 uppercase tracking-wide">Parent</span>',teacher:'<span class="px-1.5 py-0.5 text-[10px] rounded bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 uppercase tracking-wide">Teacher</span>',other:'<span class="px-1.5 py-0.5 text-[10px] rounded bg-gray-500/10 border border-gray-500/20 text-gray-300 uppercase tracking-wide">Other</span>'};
+
+  async function loadContacts(){
+    try{const r=await(await fetch('/contacts')).json();contacts=r.data||[];renderContacts(contacts);}catch(e){}
+  }
+  function renderContacts(list){
+    document.getElementById('contactList').innerHTML=list.length?list.map(c=>`
+      <tr class="hover:bg-white/[.03] transition-colors">
+        <td class="px-4 py-3 font-sans">${c.phone}</td>
+        <td class="px-4 py-3 font-sans text-gray-200">${c.name||'-'}</td>
+        <td class="px-4 py-3">${T[c.user_type]||T.other}</td>
+        <td class="px-4 py-3 text-gray-500 font-sans text-xs">${c.updated_at?new Date(c.updated_at).toLocaleDateString():'-'}</td>
+        <td class="px-4 py-3 text-right flex gap-2 justify-end">
+          <button onclick="editContact(${JSON.stringify(c).replace(/"/g,'&quot;')})" class="text-xs px-2.5 py-1 rounded-lg bg-blue-500/10 border border-blue-500/20 text-blue-300 hover:bg-blue-500/20 transition font-semibold">Edit</button>
+          <button onclick="deleteContact(${c.id})" class="text-xs px-2.5 py-1 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 hover:bg-red-500/20 transition font-semibold">Del</button>
+        </td>
+      </tr>`).join(''):'<tr><td colspan="5" class="px-4 py-8 text-center text-gray-600">No contacts found.</td></tr>';
+  }
+
+  document.getElementById('searchContact').oninput=function(){const t=this.value.toLowerCase();renderContacts(contacts.filter(c=>(c.phone||'').includes(t)||(c.name||'').toLowerCase().includes(t)));};
+
+  function openModal(title='Add Contact'){document.getElementById('modalTitle').textContent=title;const m=document.getElementById('contactModal');m.classList.remove('hidden');m.classList.add('flex');}
+  function closeModal(){document.getElementById('contactId').value='';document.getElementById('contactPhone').value='';document.getElementById('contactName').value='';document.getElementById('contactType').value='student';const m=document.getElementById('contactModal');m.classList.add('hidden');m.classList.remove('flex');}
+  function editContact(c){document.getElementById('contactId').value=c.id;document.getElementById('contactPhone').value=c.phone;document.getElementById('contactName').value=c.name||'';document.getElementById('contactType').value=c.user_type||'other';openModal('Edit Contact');}
+  async function deleteContact(id){if(!confirm('Delete this contact?'))return;try{await fetch('/contacts/'+id,{method:'DELETE'});loadContacts();}catch(e){}}
+
+  document.getElementById('btnAddContact').onclick=()=>openModal();
+  document.getElementById('btnCancelModal').onclick=closeModal;
+  document.getElementById('btnCancelModal2').onclick=closeModal;
+  document.getElementById('contactForm').onsubmit=async(e)=>{
+    e.preventDefault();const id=document.getElementById('contactId').value;const payload={phone:document.getElementById('contactPhone').value,name:document.getElementById('contactName').value,user_type:document.getElementById('contactType').value};
+    try{if(id)await fetch('/contacts/'+id,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});else await fetch('/contacts',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});closeModal();loadContacts();}catch(e){}
+  };
+  loadContacts();
+</script>
+</body>
+</html>

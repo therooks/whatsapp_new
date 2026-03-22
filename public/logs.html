@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Logs | WA Engine X</title>
+  <link rel="stylesheet" href="/output.css" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
+  <style>
+    *{box-sizing:border-box;}
+    body{background:#030712;color:#f8fafc;font-family:"Outfit",sans-serif;margin:0;min-height:100vh;}
+    #bgCanvas{position:fixed;inset:0;z-index:0;pointer-events:none;}
+    .glass{background:rgba(17,24,39,.7);backdrop-filter:blur(18px);border:1px solid rgba(255,255,255,.07);border-radius:1rem;}
+    .glass-nav{background:rgba(8,12,22,.92);backdrop-filter:blur(24px);border-bottom:1px solid rgba(255,255,255,.06);}
+    .nav-a{color:#94a3b8;font-weight:600;font-size:.875rem;padding:.4rem .85rem;border-radius:.5rem;text-decoration:none;white-space:nowrap;transition:background .2s,color .2s;}
+    .nav-a:hover{background:rgba(255,255,255,.06);color:#fff;}
+    .nav-a.on{background:rgba(52,211,153,.12);color:#34d399;}
+    .btn{cursor:pointer;border:none;font-family:inherit;font-weight:700;border-radius:.75rem;transition:opacity .2s,transform .15s;}
+    .btn:hover{opacity:.85;}
+    input[type="date"]::-webkit-calendar-picker-indicator{filter:invert(1);opacity:.5;cursor:pointer;}
+    ::-webkit-scrollbar{width:4px;}::-webkit-scrollbar-thumb{background:rgba(255,255,255,.12);border-radius:4px;}
+  </style>
+</head>
+<body>
+<canvas id="bgCanvas"></canvas>
+
+<!-- TOP NAV -->
+<nav class="glass-nav sticky top-0 z-50 w-full px-5 py-3 flex flex-row items-center justify-between gap-4">
+  <div class="flex items-center gap-2 shrink-0">
+    <div class="p-1.5 rounded-lg bg-gradient-to-br from-emerald-400 to-cyan-500">
+      <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>
+    </div>
+    <span class="font-bold text-white text-sm tracking-wide">WA Engine X</span>
+  </div>
+  <div class="flex items-center gap-1 overflow-x-auto" style="scrollbar-width:none">
+    <a href="/d/aW5kZXg" class="nav-a">Dashboard</a>
+    <a href="/d/Y29udGFjdHM" class="nav-a">Contacts</a>
+    <a href="/d/bG9ncw" class="nav-a on">Logs</a>
+    <a href="/d/aGlzdG9yeQ" class="nav-a">History</a>
+  </div>
+  <div style="display:flex;align-items:center;gap:.75rem;flex-shrink:0">
+    <a href="/auth/logout" style="font-size:.75rem;padding:.35rem .85rem;border-radius:.5rem;background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.2);color:#f87171;text-decoration:none;font-weight:600;white-space:nowrap">Sign Out</a>
+  </div>
+</nav>
+
+<!-- MAIN -->
+<div class="relative z-10 w-full max-w-screen-xl mx-auto px-4 md:px-6 py-6">
+  <div class="glass p-5">
+
+    <!-- Header Row -->
+    <div class="flex flex-wrap items-center justify-between gap-3 mb-5">
+      <h2 class="text-lg font-bold text-white">Live Console Logs</h2>
+      <div class="flex gap-2 flex-wrap">
+        <button id="btnExportCSV" class="btn px-3 py-2 text-sm bg-blue-500/15 border border-blue-500/30 text-blue-300">CSV Export</button>
+        <button id="btnExportPDF" class="btn px-3 py-2 text-sm bg-indigo-500/15 border border-indigo-500/30 text-indigo-300">PDF Export</button>
+        <button id="btnRefreshLogs" class="btn px-4 py-2 text-sm bg-gradient-to-r from-emerald-500 to-emerald-400 text-black shadow-[0_0_12px_rgba(16,185,129,.3)]">Sync Logs</button>
+      </div>
+    </div>
+
+    <!-- Filters Row -->
+    <div class="flex flex-wrap gap-3 mb-5">
+      <input id="searchLogs" type="text" placeholder="Search phone, message, type..." class="flex-1 min-w-[180px] px-3 py-2 text-sm bg-black/40 text-gray-200 rounded-xl border border-white/10 focus:outline-none focus:border-emerald-500 transition" />
+      <select id="filterStatus" class="px-3 py-2 text-sm bg-black/40 text-gray-200 rounded-xl border border-white/10 outline-none focus:border-emerald-500">
+        <option value="">All Statuses</option>
+        <option value="sent">Sent</option>
+        <option value="failed">Failed</option>
+        <option value="pending">Pending</option>
+      </select>
+      <input id="fromDate" type="date" class="px-3 py-2 text-sm bg-black/40 text-gray-200 rounded-xl border border-white/10 outline-none" />
+      <input id="toDate" type="date" class="px-3 py-2 text-sm bg-black/40 text-gray-200 rounded-xl border border-white/10 outline-none" />
+      <button id="btnApplyDate" class="btn px-3 py-2 text-sm bg-white/5 border border-white/10 text-gray-300">Apply</button>
+    </div>
+
+    <!-- Table -->
+    <div class="overflow-x-auto rounded-xl border border-white/5">
+      <table class="w-full text-left text-xs">
+        <thead class="bg-white/5 text-gray-500 uppercase tracking-wider border-b border-white/5">
+          <tr>
+            <th class="px-4 py-3">Recipient</th>
+            <th class="px-4 py-3">Type</th>
+            <th class="px-4 py-3 w-2/5">Message</th>
+            <th class="px-4 py-3">Status</th>
+            <th class="px-4 py-3">Timestamp</th>
+          </tr>
+        </thead>
+        <tbody id="logsList" class="divide-y divide-white/5 font-mono text-gray-300">
+          <tr><td colspan="5" class="px-4 py-6 text-center text-gray-600">Loading...</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- THREE.JS BG -->
+<script>
+  const scene=new THREE.Scene(),cam=new THREE.PerspectiveCamera(65,innerWidth/innerHeight,.1,1000),ren=new THREE.WebGLRenderer({canvas:document.getElementById('bgCanvas'),alpha:true,antialias:true});
+  ren.setSize(innerWidth,innerHeight);ren.setPixelRatio(Math.min(devicePixelRatio,2));
+  const geo=new THREE.BufferGeometry(),N=500,pos=new Float32Array(N*3),col=new Float32Array(N*3),tc=[new THREE.Color('#3B82F6'),new THREE.Color('#06b6d4')];
+  for(let i=0;i<N*3;i+=3){pos[i]=(Math.random()-.5)*40;pos[i+1]=(Math.random()-.5)*40;pos[i+2]=(Math.random()-.5)*20-5;const c=tc[~~(Math.random()*2)];col[i]=c.r;col[i+1]=c.g;col[i+2]=c.b;}
+  geo.setAttribute('position',new THREE.BufferAttribute(pos,3));geo.setAttribute('color',new THREE.BufferAttribute(col,3));
+  const pts=new THREE.Points(geo,new THREE.PointsMaterial({size:.08,vertexColors:true,transparent:true,opacity:.6,blending:THREE.AdditiveBlending}));
+  scene.add(pts);cam.position.z=8;
+  (function anim(){requestAnimationFrame(anim);pts.rotation.y+=.0003;ren.render(scene,cam);})();
+  window.addEventListener('resize',()=>{cam.aspect=innerWidth/innerHeight;cam.updateProjectionMatrix();ren.setSize(innerWidth,innerHeight);});
+</script>
+
+<!-- LOGS LOGIC -->
+<script>
+  let allLogs=[];
+  const CAT_C={attendance:'px-1.5 py-0.5 text-[10px] rounded bg-indigo-500/10 border border-indigo-500/20 text-indigo-300',fees_due:'px-1.5 py-0.5 text-[10px] rounded bg-fuchsia-500/10 border border-fuchsia-500/20 text-fuchsia-300',birthday:'px-1.5 py-0.5 text-[10px] rounded bg-cyan-500/10 border border-cyan-500/20 text-cyan-300',announcement:'px-1.5 py-0.5 text-[10px] rounded bg-emerald-500/10 border border-emerald-500/20 text-emerald-300'};
+  const ST_C={sent:'text-emerald-400 font-bold',failed:'text-red-400 font-bold',pending:'text-yellow-400 font-bold'};
+  function catBadge(c){return`<span class="${CAT_C[c]||'px-1.5 py-0.5 text-[10px] rounded bg-white/5 border border-white/10 text-gray-400'} uppercase tracking-wide">${c||'custom'}</span>`;}
+  function stBadge(s){return`<span class="${ST_C[s]||'text-gray-400'} uppercase text-[10px]">${s||'?'}</span>`;}
+
+  async function loadLogs(){
+    try{const r=await(await fetch('/logs/recent')).json();allLogs=r.data||[];applyFilters();}catch(e){}
+  }
+
+  function applyFilters(){
+    const term=document.getElementById('searchLogs').value.toLowerCase();
+    const status=document.getElementById('filterStatus').value;
+    const from=document.getElementById('fromDate').value?new Date(document.getElementById('fromDate').value):null;
+    const to=document.getElementById('toDate').value?new Date(document.getElementById('toDate').value):null;
+    const list=allLogs.filter(l=>{
+      const d=new Date(l.sent_at||l.created_at);
+      return(!status||l.status===status)&&(!term||(l.phone||'').includes(term)||(l.message_text||'').toLowerCase().includes(term)||(l.category||'').includes(term))&&(!from||d>=from)&&(!to||d<=to);
+    });
+    document.getElementById('logsList').innerHTML=list.length?list.map(l=>`<tr class="hover:bg-white/[.03] transition-colors"><td class="px-4 py-2.5 font-sans">${l.name?l.name+' ('+l.phone+')':l.phone}</td><td class="px-4 py-2.5">${catBadge(l.category)}</td><td class="px-4 py-2.5 text-emerald-200 font-sans max-w-xs truncate">${(l.message_text||'').substring(0,80).replace(/</g,'&lt;')}</td><td class="px-4 py-2.5">${stBadge(l.status)}</td><td class="px-4 py-2.5 font-sans text-gray-500">${l.sent_at?new Date(l.sent_at).toLocaleString():'N/A'}</td></tr>`).join(''):`<tr><td colspan="5" class="px-4 py-8 text-center text-gray-600">No log entries found.</td></tr>`;
+  }
+
+  document.getElementById('btnRefreshLogs').onclick=loadLogs;
+  document.getElementById('searchLogs').oninput=applyFilters;
+  document.getElementById('filterStatus').onchange=applyFilters;
+  document.getElementById('btnApplyDate').onclick=applyFilters;
+
+  document.getElementById('btnExportCSV').onclick=()=>{
+    const rows=[['Phone','Name','Category','Status','Message','Date']];
+    allLogs.forEach(l=>rows.push([l.phone,l.name||'',l.category||'',l.status||'',(l.message_text||'').replace(/[\r\n]/g,' '),l.sent_at||'']));
+    const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([rows.map(r=>r.map(x=>`"${x}"`).join(',')).join('\n')],{type:'text/csv'}));a.download='wa_logs.csv';a.click();
+  };
+  document.getElementById('btnExportPDF').onclick=async()=>{
+    const{jsPDF}=window.jspdf;const doc=new jsPDF({orientation:'landscape'});doc.text('WA Engine X — Logs Export',14,15);doc.setFontSize(9);let y=25;
+    allLogs.slice(0,80).forEach(l=>{doc.text(`${l.phone||''} | ${l.category||''} | ${l.status||''} | ${(l.message_text||'').substring(0,80)} | ${l.sent_at||''}`,14,y);y+=6;if(y>190){doc.addPage();y=15;}});
+    doc.save('wa_logs.pdf');
+  };
+
+  loadLogs();setInterval(loadLogs,8000);
+</script>
+</body>
+</html>

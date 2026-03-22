@@ -1,0 +1,12 @@
+{
+  "watch": ["server.js", "whatsapp", "routes"],
+  "ignore": [
+    "whatsapp/session/**",
+    "whatsapp/session",
+    "public/**",
+    "node_modules/**",
+    "*.log"
+  ],
+  "ext": "js,json",
+  "delay": 500
+}

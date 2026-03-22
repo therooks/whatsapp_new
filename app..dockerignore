@@ -1,0 +1,22 @@
+# 1) Base image
+FROM node:18-alpine
+
+# 2) App directory
+WORKDIR /usr/src/app
+
+# 3) Install deps first (better caching)
+COPY package*.json ./
+RUN npm install --production
+
+# 4) Copy project
+COPY . .
+
+# 5) Environment & port
+ENV NODE_ENV=production
+ENV PORT=8000
+
+# 6) Expose the same port your app listens on
+EXPOSE 8000
+
+# 7) Run app
+CMD ["npm", "start"]
