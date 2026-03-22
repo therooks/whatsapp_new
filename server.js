@@ -65,35 +65,26 @@ const PUBLIC_PATHS = [
   '/favicon.ico',
 ];
 
-function isAuthenticated(req, res, next) {
-  // ── 1. Always allow public paths and root (login page)
-  if (PUBLIC_PATHS.includes(req.path)) return next();
+// ── API paths that are fully PUBLIC (no auth needed for server-to-server calls) ──
+const API_PUBLIC_PATHS = [
+  '/qr', '/send', '/health', '/reconnect', '/disconnect', '/diag',
+  '/logs', '/stats', '/contacts', '/auth',
+];
 
-  // ── 2. Always allow static assets (css, js, fonts, images)
+function isAuthenticated(req, res, next) {
+  // 1. Always let through: login root, auth routes, static assets
+  if (PUBLIC_PATHS.includes(req.path)) return next();
   if (req.path.match(/\.(css|js|woff2?|ttf|png|jpg|ico|svg|webp)$/)) return next();
 
-  // ── 3. API Key bypass — for server-to-server calls (CI3, cron jobs, etc.)
-  //       Send header:  x-api-key: <WA_API_KEY from .env>
-  const API_KEY = process.env.WA_API_KEY || '';
-  const reqKey  = req.headers['x-api-key'] || '';
-  if (API_KEY && reqKey === API_KEY) {
-    return next(); // ✅ Valid API key — skip session check
-  }
+  // 2. ALL API endpoints are public — no session or API key required
+  //    (They are only callable by someone who knows the server URL)
+  const isApiCall = API_PUBLIC_PATHS.some(p => req.path.startsWith(p));
+  if (isApiCall) return next();
 
-  // ── 4. Browser session check
-  if (req.session && req.session.userId) {
-    return next(); // ✅ Logged-in browser user
-  }
+  // 3. Dashboard page routes (/d/*) require a browser login session
+  if (req.session && req.session.userId) return next();
 
-  // ── 5. No valid auth — return 401 for API paths, redirect for pages
-  const isApiPath = ['/qr','/send','/logs','/stats','/contacts','/health','/reconnect','/disconnect','/diag']
-    .some(p => req.path.startsWith(p));
-
-  if (isApiPath || req.headers.accept?.includes('application/json')) {
-    return res.status(401).json({ success: false, message: 'Unauthorized. Provide x-api-key header or login first.' });
-  }
-
-  // Browser page request → redirect to login
+  // 4. Not logged in → redirect to login page
   return res.redirect('/');
 }
 
